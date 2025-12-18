@@ -4,12 +4,14 @@ import re
 import requests
 from playwright.async_api import Playwright, async_playwright, expect
 from dotenv import load_dotenv
-from apintegrations.whatsapp import send_latest_bill_via_whatsapp
+from apintegrations.email import send_latest_bill_to_email
+from config.secrets import get_secret
 load_dotenv()
 
-USERNAME = os.getenv("EKU_USER")
-PASSWORD = os.getenv("EKU_PASS")
-if not USERNAME or not PASSWORD:
+username = get_secret("EKU_USER")
+password = get_secret("EKU_PASS")
+link = "https://siyakhokha.ekurhuleni.gov.za/"
+if not username or not password:
     raise SystemExit("EKU_USER and EKU_PASS must be set")
 current_date = datetime.now().strftime("%Y-%m-%d")
 
@@ -17,7 +19,7 @@ async def run(playwright: Playwright) -> None:
     browser = await playwright.chromium.launch(headless=False)
     context = await browser.new_context(accept_downloads=True)
     page = await context.new_page()
-    await page.goto("https://siyakhokha.ekurhuleni.gov.za/")
+    await page.goto(link)
     await page.get_by_role("link", name="Log In").click()
     await page.locator("#UserName").click()
     await page.locator("#UserName").click()
@@ -57,22 +59,26 @@ async def run(playwright: Playwright) -> None:
                 fh.write(data)
             print("Saved PDF from direct request to:", save_path)
 
-            print("Begin send file via Whatsapp")
-            isSuccessful = await send_latest_bill_via_whatsapp(save_path)
+            print("Begin send file via email...")
+            isSuccessful = await send_latest_bill_to_email(save_path)
+            if isSuccessful:
+                print("File sent successfully via email.")
+            else:
+                print("Failed to send the file via email.")
 
-            # Why not try save the file to Google Drive here?
+            # TODO - Think about backing up file to Google drive folder
         
     except Exception as e:
         print("Failed to download the file:", e)
         raise e
     finally:
         try:
-            doc_page.close()
+            await doc_page.close()
             # delete temp file
             os.remove(save_path)
             print("Temp file deleted")
+            await context.close()
+            await browser.close()
         except Exception:
             pass
         
-    context.close()
-    browser.close()
