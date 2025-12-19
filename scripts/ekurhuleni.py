@@ -6,6 +6,7 @@ from playwright.async_api import Playwright, async_playwright, expect
 from dotenv import load_dotenv
 from apintegrations.email import send_latest_bill_to_email
 from config.secrets import get_secret
+from pathlib import Path
 load_dotenv()
 
 username = get_secret("EKU_USER")
@@ -16,16 +17,16 @@ if not username or not password:
 current_date = datetime.now().strftime("%Y-%m-%d")
 
 async def run(playwright: Playwright) -> None:
-    browser = await playwright.chromium.launch(headless=False)
+    browser = await playwright.chromium.launch(headless=True)
     context = await browser.new_context(accept_downloads=True)
     page = await context.new_page()
     await page.goto(link)
     await page.get_by_role("link", name="Log In").click()
     await page.locator("#UserName").click()
     await page.locator("#UserName").click()
-    await page.locator("#UserName").fill(USERNAME)
+    await page.locator("#UserName").fill(username)
     await page.get_by_label("Password").click()
-    await page.get_by_label("Password").fill(PASSWORD)
+    await page.get_by_label("Password").fill(password)
     await page.get_by_role("button", name="Log in").click()
     await page.get_by_role("link", name="Municipal Services").click()
     await page.get_by_role("link", name="View/ Pay Municipal Bills").first.click()
@@ -45,7 +46,8 @@ async def run(playwright: Playwright) -> None:
     response = requests.get(doc_url)
     response.raise_for_status()
     
-    temp_dir = r"C:\Temp\EkurhuleniStatements"
+    temp_dir = Path.cwd() / "temp"
+    temp_dir.mkdir(exist_ok=True)
     
     try:
         resp = await context.request.get(doc_url, timeout=60 * 1000)
