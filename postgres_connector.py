@@ -19,7 +19,7 @@ def log_to_db(run_id: int, process_name: str, successful: bool, message: str):
             INSERT INTO AutomationAppLogs (RunID, LogTimestamp, ProcessName, Successful, Message)
             VALUES (%s, %s, %s, %s, %s)
             """,
-            (run_id, datetime.now(), process_name, str(successful), message)
+            (str(run_id), datetime.now(), process_name, str(successful), message)
         )
         print(f"Log entry added to database for run {run_id}.")
 
