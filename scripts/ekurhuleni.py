@@ -32,55 +32,42 @@ async def run(playwright: Playwright) -> None:
     await page.get_by_role("link", name="View/ Pay Municipal Bills").first.click()
     
     year_month = datetime.now().strftime("%Y-%m")
-    
-    async with page.expect_popup() as popup_info:
-        await page.get_by_role("row").filter(has_text=year_month).first.get_by_role("link").first.click()
-    
-    doc_page = await popup_info.value
-    await doc_page.wait_for_load_state("domcontentloaded", timeout=60000)
-    doc_url = doc_page.url
-    print(f"Document URL captured: {doc_url}")
-    await doc_page.close()
-    
-    print("Downloading file...")
-    response = requests.get(doc_url)
-    response.raise_for_status()
-    
+
     temp_dir = Path.cwd() / "temp"
     temp_dir.mkdir(exist_ok=True)
+    save_path = None
     
     try:
-        resp = await context.request.get(doc_url, timeout=60 * 1000)
-        ct = resp.headers.get("content-type", "")
-        # If direct PDF, save it
-        if "application/pdf" in ct.lower():
-            data = await resp.body()
-            filename = f"EkurhuleniStatement-{year_month}.pdf"
-            save_path = os.path.join(temp_dir, filename)
-            with open(save_path, "wb") as fh:
-                fh.write(data)
-            print("Saved PDF from direct request to:", save_path)
+        async with page.expect_download() as download_info:
+            await page.get_by_role("row").filter(has_text=year_month).first.get_by_role("link").first.click()
+        download = await download_info.value
 
-            print("Begin send file via email...")
-            isSuccessful = await send_latest_bill_to_email(save_path)
-            if isSuccessful:
-                print("File sent successfully via email.")
-            else:
-                print("Failed to send the file via email.")
+        filename = f"EkurhuleniStatement-{year_month}.pdf"
+        save_path = temp_dir / filename
+        await download.save_as(save_path)
+        print(f"Saved PDF to: {save_path}")
 
-            # TODO - Think about backing up file to Google drive folder
+        print("Begin send file via email...")
+        isSuccessful = await send_latest_bill_to_email(str(save_path))
+        if isSuccessful:
+            print("File sent successfully via email.")
+        else:
+            print("Failed to send the file via email.")
+
+        # TODO - Think about backing up file to Google drive folder
         
     except Exception as e:
         print("Failed to download the file:", e)
         raise e
     finally:
         try:
-            await doc_page.close()
-            # delete temp file
-            os.remove(save_path)
-            print("Temp file deleted")
-            await context.close()
-            await browser.close()
-        except Exception:
-            pass
+            if save_path and save_path.exists():
+                save_path.unlink()
+                print("Temp file deleted")
+        except Exception as e:
+            print(f"Error during cleanup of temp file: {e}")
+        
+        await context.close()
+        await browser.close()
+        
         
