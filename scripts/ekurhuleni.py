@@ -37,7 +37,7 @@ async def run(playwright: Playwright) -> None:
         await page.get_by_role("row").filter(has_text=year_month).first.get_by_role("link").first.click()
     
     doc_page = await popup_info.value
-    await doc_page.wait_for_load_state()
+    await doc_page.wait_for_load_state("domcontentloaded")
     doc_url = doc_page.url
     print(f"Document URL captured: {doc_url}")
     await doc_page.close()
