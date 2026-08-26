@@ -6,4 +6,5 @@ keyring
 python-dotenv
 requests
 psycopg2-binary
-
+google-api-python-client
+google-auth
