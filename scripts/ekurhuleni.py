@@ -21,6 +21,7 @@ async def run(playwright: Playwright) -> bool:
     browser = await playwright.chromium.launch(headless=True)
     context = await browser.new_context(accept_downloads=True)
     page = await context.new_page()
+    page.set_default_timeout(90000)
     await page.goto(link)
     await page.locator("#navmenu").get_by_role("link", name="Login").click()
     await page.get_by_placeholder("Username").click()
@@ -28,6 +29,7 @@ async def run(playwright: Playwright) -> bool:
     await page.get_by_placeholder("Password").click()
     await page.get_by_placeholder("Password").fill(password)
     await page.get_by_role("button", name="Login").click()
+    await page.locator(".loader").first.wait_for(state="hidden")
     await page.get_by_role("link", name="View Municipal Statements").click()
 
     year_month = datetime.now().strftime("%Y-%m")
