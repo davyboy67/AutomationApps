@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import re
 import requests
@@ -18,21 +18,22 @@ if not username or not password:
 current_date = datetime.now().strftime("%Y-%m-%d")
 
 async def run(playwright: Playwright) -> bool:
-    browser = await playwright.chromium.launch(headless=True)
+    browser = await playwright.chromium.launch(headless=False)
     context = await browser.new_context(accept_downloads=True)
     page = await context.new_page()
     await page.goto(link)
-    await page.get_by_role("link", name="Log In").click()
-    await page.locator("#UserName").click()
-    await page.locator("#UserName").click()
-    await page.locator("#UserName").fill(username)
-    await page.get_by_label("Password").click()
-    await page.get_by_label("Password").fill(password)
-    await page.get_by_role("button", name="Log in").click()
-    await page.get_by_role("link", name="Municipal Services").click()
-    await page.get_by_role("link", name="View/ Pay Municipal Bills").first.click()
-    
+    await page.locator("#navmenu").get_by_role("link", name="Login").click()
+    await page.get_by_placeholder("Username").click()
+    await page.get_by_placeholder("Username").fill(username)
+    await page.get_by_placeholder("Password").click()
+    await page.get_by_placeholder("Password").fill(password)
+    await page.get_by_role("button", name="Login").click()
+    await page.get_by_role("link", name="View Municipal Statements").click()
+
     year_month = datetime.now().strftime("%Y-%m")
+    # The statements table lists a due date, not a bill date, and a statement issued in month M
+    # falls due on the 5th of M+1 -- so this month's bill is found by matching next month.
+    due_month = (datetime.now().replace(day=1) + timedelta(days=32)).strftime("%Y-%m")
 
     temp_dir = Path.cwd() / "temp"
     temp_dir.mkdir(exist_ok=True)
@@ -41,7 +42,7 @@ async def run(playwright: Playwright) -> bool:
     try:
         await page.get_by_role("row").nth(1).wait_for()
 
-        current_month_bill = page.get_by_role("row").filter(has_text=year_month)
+        current_month_bill = page.get_by_role("row").filter(has_text=due_month)
         if await current_month_bill.count() == 0:
             print(f"Bill for {year_month} has not been published yet.")
             return False

@@ -66,3 +66,12 @@ The workflow runs on the 20th and again on the 25th. If the current month's bill
 published on the 20th, the run logs that and exits green without downloading. The 25th run skips
 itself if the bill was already retrieved this month, otherwise it retries; if the bill is still
 missing it emails a final-attempt failure notice and exits non-zero.
+
+### How "this month's bill" is identified
+
+The statements table shows a **due date**, not a bill date, and a statement issued in month M falls
+due on the 5th of M+1 — the August 2026 statement is listed as `2026-09-05`. So the row is matched
+on *next* month's `YYYY-MM`, not the current one. Matching on the current month silently selects
+the previous month's statement, downloads it, and reports success. The downloaded file is still
+named for the issue month (`EkurhuleniStatement-<current YYYY-MM>.pdf`), which is what the Drive
+duplicate check and the `AutomationAppLogs` rows key off.
