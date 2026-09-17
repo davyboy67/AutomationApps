@@ -18,7 +18,7 @@ if not username or not password:
 current_date = datetime.now().strftime("%Y-%m-%d")
 
 async def run(playwright: Playwright) -> bool:
-    browser = await playwright.chromium.launch(headless=False)
+    browser = await playwright.chromium.launch(headless=True)
     context = await browser.new_context(accept_downloads=True)
     page = await context.new_page()
     await page.goto(link)
